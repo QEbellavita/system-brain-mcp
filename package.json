@@ -1,0 +1,14 @@
+{
+  "name": "system-brain-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that gives your coding agent a queryable, honest view of your own system — where code deploys, what's fabricated, what's open, whether the learning loop closes",
+  "license": "MIT",
+  "main": "server.js",
+  "bin": { "system-brain-mcp": "server.js" },
+  "files": ["server.js", "src/", "config/"],
+  "scripts": { "start": "node server.js", "test": "NODE_OPTIONS=--experimental-vm-modules jest" },
+  "keywords": ["mcp", "model-context-protocol", "deploy", "introspection", "code-audit"],
+  "engines": { "node": ">=18" },
+  "dependencies": { "@modelcontextprotocol/sdk": "^1.0.0" },
+  "devDependencies": { "jest": "^29.7.0" }
+}

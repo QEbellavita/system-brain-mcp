@@ -1,0 +1,37 @@
+{
+  "$comment": "Describes YOUR prediction/feedback tables so brain_analytics can answer 'is the learning loop actually closing?'. Copy to analytics.json and edit. If your system has no ML loop, leave the table lists empty — the tool reports 'not configured' rather than guessing.",
+
+  "outcomeLedger": {
+    "table": "prediction_outcomes",
+    "labelColumn": "actual_outcome",
+    "$comment": "The ONE table where a prediction's real outcome lands. The label column is NULL until genuine ground truth (self-report, verified result) arrives. Coverage = labeled / ledger-total, a same-id-space ratio — the honest 'is the loop closing?' number."
+  },
+
+  "legacyFeedbackTables": ["feedback", "prediction_feedback"],
+  "$comment_legacy": "Adjacent feedback tables in a DIFFERENT id-space. Reported for visibility, but they are NOT the outcome loop's sink, so they never define coverage.",
+
+  "predictionTables": ["predictions", "model_prediction_log"],
+  "$comment_predictions": "Raw prediction logs — activity context only, never a coverage denominator. Most rows never create an outcome-ledger row, so folding them into the ratio manufactures a false 0% coverage and a phantom 'famine' alarm. This is a mistake worth not repeating.",
+
+  "timestampColumns": ["created_at", "timestamp", "ts"],
+
+  "thresholds": {
+    "famineCoverageRatio": 0.02,
+    "ledgerMinForFamine": 20,
+    "$comment_min": "Below this many ledger rows the ratio is statistical noise, so a low value is reported as 'warming up' rather than a famine alarm.",
+    "noLedgerActivityFloor": 50,
+    "$comment_floor": "Substantial prediction activity with an EMPTY ledger is the signature of broken intake wiring. Below this floor stay quiet — a tiny dev DB is not evidence of a bug."
+  },
+
+  "seedUserPattern": "^(demo|seed|test|smoke|sample|fixture)",
+  "$comment_seed": "Users matching this are treated as seed/demo data, so a database full of fixtures is not reported as production activity.",
+
+  "fabrication": {
+    "maxDepth": 4,
+    "fileCap": 1500,
+    "findingCap": 300,
+    "extensions": [".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx"],
+    "excludeDirPattern": "^(node_modules|__tests__|\\.git|test|tests|dist|build|coverage|vendor)$",
+    "excludeFilePattern": "\\.(test|spec)\\.(js|mjs|cjs|ts|tsx|jsx)$"
+  }
+}

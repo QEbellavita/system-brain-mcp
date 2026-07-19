@@ -1,0 +1,46 @@
+{
+  "$comment": "Default work taxonomy. Copy to taxonomy.json and edit for your system. Every field is optional; omitted lists simply never match.",
+
+  "phases": {
+    "min": 1,
+    "max": 6,
+    "labels": {
+      "1": "ingest",
+      "2": "detect",
+      "3": "decide",
+      "4": "persist",
+      "5": "present",
+      "6": "learn"
+    }
+  },
+
+  "systems": [
+    { "name": "api",      "phases": [1, 2, 3], "pattern": "\\bapi\\b|route|endpoint|controller|handler|middleware" },
+    { "name": "frontend", "phases": [5],       "pattern": "\\bui\\b|screen|component|page|view|css|\\.html\\b|\\.tsx?\\b" },
+    { "name": "data",     "phases": [1, 4],    "pattern": "schema|migration|database|\\bdb\\b|query|table|index" },
+    { "name": "jobs",     "phases": [1, 6],    "pattern": "cron|worker|queue|scheduler|batch|background job" },
+    { "name": "infra",    "phases": [],        "pattern": "deploy|docker|terraform|ci\\b|pipeline|release|infra" },
+    { "name": "auth",     "phases": [1, 3],    "pattern": "auth|login|session|permission|role|tenant" },
+    { "name": "docs",     "phases": [],        "pattern": "readme|\\bdocs?\\b|changelog|guide|spec" }
+  ],
+
+  "workTypes": [
+    { "name": "fix",           "pattern": "fix|bug|broken|fail|repair|regression" },
+    { "name": "enhancement",   "pattern": "enhanc|improv|\\badd\\b|feature|support for" },
+    { "name": "verification",  "pattern": "test|verify|audit|review|validate" },
+    { "name": "deployment",    "pattern": "deploy|release|ship|launch|rollout" },
+    { "name": "documentation", "pattern": "\\bdocs?\\b|readme|comment|explain" },
+    { "name": "refactor",      "pattern": "refactor|rename|extract|tidy|clean ?up|simplif" }
+  ],
+
+  "riskTags": [
+    { "name": "security",     "pattern": "\\b(security|vulnerab(le|ility|ilities)|exploit(s|ed|ing)?|secrets?|credentials?)\\b" },
+    { "name": "privacy",      "pattern": "\\b(privacy|\\bpii\\b|personal data|gdpr|consent)\\b" },
+    { "name": "auth",         "pattern": "\\b(auth|authentication|authorization|login|oauth|jwt|session)\\b" },
+    { "name": "data-loss",    "pattern": "\\b(delete|deletion|drop table|truncate|purge|erasure|destroy)\\b" },
+    { "name": "production",   "pattern": "\\b(production|prod|live site|customers?)\\b" },
+    { "name": "irreversible", "pattern": "\\b(irreversible|cannot be undone|permanent|one.?way)\\b" }
+  ],
+
+  "changedFileKinds": []
+}

@@ -1,0 +1,4 @@
+node_modules/
+config/taxonomy.json
+config/analytics.json
+.DS_Store
