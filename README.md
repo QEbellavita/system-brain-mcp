@@ -1,4 +1,6 @@
-# system-brain-mcp
+<p align="center">
+  <img src="./assets/header.svg" alt="system-brain-mcp — where code deploys, what's fabricated, whether the loop closes" width="100%">
+</p>
 
 Your agent just deployed to the wrong place. Again.
 
