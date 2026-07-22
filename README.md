@@ -177,6 +177,11 @@ npm test
 implementations, so SQLite behaviour is driven through a faked `sqlite3` CLI and filesystem
 cases run in temp dirs.
 
+## Citing
+
+If this is useful in your workflow, cite it via the repo's [CITATION.cff](CITATION.cff)
+(GitHub's "Cite this repository" button), or the Zenodo DOI once archived.
+
 ## Licence
 
 MIT — see [LICENSE](LICENSE).

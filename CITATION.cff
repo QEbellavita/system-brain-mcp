@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "system-brain-mcp: read-only MCP tools for honest self-interrogation by a coding agent"
+type: software
+authors:
+  - family-names: Switzer
+    given-names: Belinda
+version: 0.2.0
+date-released: 2026-07-22
+license: MIT
+repository-code: "https://github.com/QEbellavita/system-brain-mcp"
+keywords:
+  - mcp
+  - model-context-protocol
+  - developer-tools
+  - deploy-verification
+  - ai-agents
+abstract: >-
+  Eleven read-only MCP tools that let a coding agent ask honest questions
+  about the system it's working in — where code actually deploys, what in it
+  is fabricated, what's still open, whether the learning loop is closing, and
+  what the evidence says to work on next.

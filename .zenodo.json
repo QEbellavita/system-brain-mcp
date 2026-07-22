@@ -1,0 +1,16 @@
+{
+  "title": "system-brain-mcp: read-only MCP tools for honest self-interrogation by a coding agent",
+  "description": "Eleven read-only MCP tools that let a coding agent ask honest questions about the system it's working in — where code actually deploys, what in it is fabricated, what's still open, whether the learning loop is closing, and what the evidence says to work on next.",
+  "creators": [
+    { "name": "Switzer, Belinda" }
+  ],
+  "license": "MIT",
+  "upload_type": "software",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "developer-tools",
+    "deploy-verification",
+    "ai-agents"
+  ]
+}
