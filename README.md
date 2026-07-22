@@ -2,7 +2,10 @@
   <img src="./assets/header.svg" alt="system-brain-mcp — where code deploys, what's fabricated, whether the loop closes" width="100%">
 </p>
 
-<p align="center"><a href="https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml"><img src="https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml/badge.svg" alt="tests"></a></p>
+<p align="center">
+  <a href="https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml"><img src="https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml/badge.svg" alt="tests"></a>
+  <a href="https://doi.org/10.5281/zenodo.21485170"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.21485170.svg" alt="DOI"></a>
+</p>
 
 Your agent just deployed to the wrong place. Again.
 
@@ -180,7 +183,9 @@ cases run in temp dirs.
 ## Citing
 
 If this is useful in your workflow, cite it via the repo's [CITATION.cff](CITATION.cff)
-(GitHub's "Cite this repository" button), or the Zenodo DOI once archived.
+(GitHub's "Cite this repository" button), or the Zenodo DOI,
+[10.5281/zenodo.21485170](https://doi.org/10.5281/zenodo.21485170) — a concept DOI that
+always resolves to the latest archived version.
 
 ## Licence
 

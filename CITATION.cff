@@ -9,6 +9,7 @@ version: 0.2.0
 date-released: 2026-07-22
 license: MIT
 repository-code: "https://github.com/QEbellavita/system-brain-mcp"
+doi: 10.5281/zenodo.21485170
 keywords:
   - mcp
   - model-context-protocol
