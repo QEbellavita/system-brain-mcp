@@ -2,6 +2,8 @@
   <img src="./assets/header.svg" alt="system-brain-mcp — where code deploys, what's fabricated, whether the loop closes" width="100%">
 </p>
 
+<p align="center">[![tests](https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml)</p>
+
 Your agent just deployed to the wrong place. Again.
 
 Eight read-only MCP tools that let a coding agent ask honest questions about the system
