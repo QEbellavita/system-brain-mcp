@@ -2,7 +2,7 @@
   <img src="./assets/header.svg" alt="system-brain-mcp — where code deploys, what's fabricated, whether the loop closes" width="100%">
 </p>
 
-<p align="center">[![tests](https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml)</p>
+<p align="center"><a href="https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml"><img src="https://github.com/QEbellavita/system-brain-mcp/actions/workflows/test.yml/badge.svg" alt="tests"></a></p>
 
 Your agent just deployed to the wrong place. Again.
 
