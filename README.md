@@ -28,9 +28,15 @@ much should you trust the answer?**
 ## Start here
 
 ```bash
+npx -y -p system-brain-mcp system-brain-init ~/code   # scan your repos, draft a manifest
+```
+
+Or from source:
+
+```bash
 git clone https://github.com/QEbellavita/system-brain-mcp
 cd system-brain-mcp && npm install
-node bin/init.js ~/code            # scan your repos, draft a manifest
+node bin/init.js ~/code            # same init, from the checkout
 ```
 
 `init` walks your directories, finds git repos, reads their platform config files, and asks
@@ -53,14 +59,14 @@ could work out, and flags everything it couldn't:
 Fill in the nulls, delete the `_` keys, and the manifest is yours. It never guesses
 silently — if it isn't sure, it says so in `_uncertain`.
 
-Then point your MCP client at `server.js`:
+Then point your MCP client at it:
 
 ```json
 {
   "mcpServers": {
     "system-brain": {
-      "command": "node",
-      "args": ["/absolute/path/to/system-brain-mcp/server.js"],
+      "command": "npx",
+      "args": ["-y", "system-brain-mcp"],
       "env": {
         "SYSTEM_BRAIN_DEPLOY_MANIFEST": "/Users/you/.config/system-brain/deploy-targets.json",
         "SYSTEM_BRAIN_FABRICATION_DIRS": "/Users/you/code/app/src:/Users/you/code/app/lib"
@@ -69,6 +75,8 @@ Then point your MCP client at `server.js`:
   }
 }
 ```
+
+(From a source checkout, use `"command": "node", "args": ["/absolute/path/to/system-brain-mcp/server.js"]` instead.)
 
 ## Tools
 

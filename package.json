@@ -1,16 +1,18 @@
 {
   "name": "system-brain-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server that gives your coding agent a queryable, honest view of your own system \u2014 where code deploys, what's fabricated, what's open, whether the learning loop closes",
   "license": "MIT",
   "main": "server.js",
   "bin": {
-    "system-brain-mcp": "server.js"
+    "system-brain-mcp": "server.js",
+    "system-brain-init": "bin/init.js"
   },
   "files": [
     "server.js",
     "src/",
-    "config/"
+    "config/",
+    "bin/"
   ],
   "scripts": {
     "start": "node server.js",
