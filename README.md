@@ -27,6 +27,8 @@ That cross-check is the point. Not "read the config file" — an agent can alrea
 Rather: **does your declared deploy target agree with what's actually in the repo, and how
 much should you trust the answer?**
 
+<p align="center"><img src="./assets/demo.gif" alt="Animated demo — brain_where_deploys resolving src/health.ts to railway, flagging a stray vercel.json, and explaining why a leftover platform config makes production appear to revert" width="90%"></p>
+
 ## Start here
 
 ```bash
