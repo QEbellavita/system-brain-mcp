@@ -1,7 +1,7 @@
 {
   "name": "system-brain-mcp",
-  "version": "0.1.1",
-  "description": "MCP server that gives your coding agent a queryable, honest view of your own system \u2014 where code deploys, what's fabricated, what's open, whether the learning loop closes",
+  "version": "0.2.0",
+  "description": "MCP server that gives your coding agent a queryable, honest view of your own system \u2014 where code actually deploys, what's fabricated, what's open, whether the feedback loop closes, and what the evidence says to do next.",
   "license": "MIT",
   "main": "server.js",
   "bin": {

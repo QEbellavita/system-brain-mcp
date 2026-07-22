@@ -6,9 +6,9 @@
 
 Your agent just deployed to the wrong place. Again.
 
-Eight read-only MCP tools that let a coding agent ask honest questions about the system
+Eleven read-only MCP tools that let a coding agent ask honest questions about the system
 it's working in — where this code actually deploys, what in it is fake, what's still open,
-whether the learning loop is closing.
+whether the learning loop is closing, and what the evidence says to work on next.
 
 ```
 brain_where_deploys  src/api/routes/health.ts
@@ -92,8 +92,30 @@ Then point your MCP client at it:
 | `brain_ml_models` | What model artifacts exist on disk? |
 | `brain_architecture` | Index and read the docs that describe this system |
 | `brain_lenses` | Mental models for framing a decision |
+| `brain_roadmap` | Which plan/roadmap notes still have open `- [ ]` items? |
+| `brain_recommend` | Ranked next steps, each citing the tool and number it came from |
+| `brain_reframe` | One recommendation, pushed through a reasoning lens with an adversarial gate |
 
 Everything is **read-only**. Nothing writes to your database, repos, or deploy targets.
+
+## On `brain_recommend`
+
+A deterministic rule table over the brain's own evidence — **not a model**. Each rule fires
+only when its source reports `complete` health, so a failed GitHub call or an unreadable
+database produces *fewer* recommendations, never invented ones. If nothing fires, you get
+an empty list and `"No actionable signals from current data."` — which is an answer, not a
+failure.
+
+The output ends with a `reasoning` contract: static, server-authored instructions the
+calling model is expected to execute — rank the candidates against live session context,
+Goodhart-check any metric-driven ones, and state what would change its mind. The server
+surfaces candidates; the judgment stays with the model, where the live context is.
+
+`brain_reframe` then takes one candidate (looked up server-side by key — priority and
+evidence can't be spoofed by the caller) and frames it through the best-scoring reasoning
+lens. This build ships no knowledge base, so reframe's evidence health always gates to
+non-complete — which deliberately trips the adversarial review (red-team, steel-man,
+pre-mortem) rather than letting absent evidence read as support.
 
 ## Configuration
 
@@ -149,7 +171,7 @@ that reads as computed.
 npm test
 ```
 
-51 tests, no network and no database required. The service takes injected `fs` and `exec`
+72 tests, no network and no database required. The service takes injected `fs` and `exec`
 implementations, so SQLite behaviour is driven through a faked `sqlite3` CLI and filesystem
 cases run in temp dirs.
 

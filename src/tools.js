@@ -227,10 +227,13 @@ function taskContextIsCanonical(taskContext) {
 
   let aggregateItems = 0;
   if (keys.includes('repository')) {
+    // Repository names are free strings here (bounded), unlike the enum'd
+    // vocabularies below — the taxonomy config knows repo aliases, but the
+    // canonical check only guards shape, not membership.
     const repository = ownDataValue(taskContext, 'repository');
     if (typeof repository !== 'string'
-      || repository.length > TASK_CONTEXT_SCHEMA.properties.repository.maxLength
-      || !REPOSITORY_ENUM.includes(repository)) return false;
+      || repository.length < TASK_CONTEXT_SCHEMA.properties.repository.minLength
+      || repository.length > TASK_CONTEXT_SCHEMA.properties.repository.maxLength) return false;
   }
 
   const arrays = [
@@ -301,9 +304,22 @@ function createDomain() {
 
   function getLensService() {
     if (!lensService) {
-      // No knowledge-base adapter: the `reframe` tool that consumed it is not
-      // part of this build, and `lenses` only needs the registry.
-      lensService = createReasoningLensService({});
+      // No knowledge base in this build. The stub adapter reports that
+      // honestly instead of throwing: reframe still works, but its evidence
+      // health gates to non-complete, which (by design) trips the adversarial
+      // review — fail toward uncertainty, never toward false confidence.
+      const stubHealth = () => ({
+        ok: false, complete: false, partial: false, failed: true,
+        reason: 'no knowledge base configured in this build', supportFound: false,
+      });
+      const kbAdapter = {
+        getStatus: async () => ({ evidenceHealth: stubHealth() }),
+        getEvidence: async () => ({
+          kbEvidence: { concepts: [], links: [], articles: [], sources: [] },
+          evidenceHealth: stubHealth(),
+        }),
+      };
+      lensService = createReasoningLensService({ kbAdapter });
     }
     return lensService;
   }
@@ -393,6 +409,87 @@ function createDomain() {
           return getLensService().listLenses(options);
         },
       },
+      {
+        def: {
+          name: 'brain_roadmap',
+          description:
+            'Scan configured Obsidian vaults for plan/roadmap/next-steps notes (filename-matched, most-recently-modified '
+            + 'first) and count their open `- [ ]` checklist items. Content reads are bounded by `limit` (default 6, max 12) '
+            + 'so an iCloud-hosted vault cannot stall the call.',
+          inputSchema: makeInput({ limit: { type: 'integer', minimum: 1, maximum: 12 } }, []),
+        },
+        handler: (args) => service.roadmap(args || {}),
+      },
+      {
+        def: {
+          name: 'brain_recommend',
+          description:
+            "Rank next steps from the brain's own read-only evidence (analytics, backlog, models; `deep: true` adds the "
+            + 'roadmap scan). A deterministic rule table, NOT a model: every candidate cites the tool and number it came '
+            + 'from, and per-source health is reported so degraded evidence cannot read as confirmed support. Output '
+            + 'includes a `reasoning` contract the calling model is expected to execute: rank the candidates against live '
+            + 'session context and state what would change its mind.',
+          inputSchema: makeInput({ deep: { type: 'boolean' } }, []),
+        },
+        handler: (args) => service.recommend(args || {}),
+      },
+      {
+        def: {
+          name: 'brain_reframe',
+          description:
+            'Reframe a real brain_recommend recommendation (looked up by `recommendationKey`), or a bounded task-only '
+            + 'subject when omitted, through a reasoning lens. Priority/evidence/title/why/action/systems/phases are always '
+            + 'derived server-side from the real recommendation and its evidence health — never accepted from the caller. '
+            + 'Output includes a `reasoning` contract (static, in-session instructions) the calling model is expected to '
+            + 'execute: actually answer the lens questions against the cited evidence and emit a proceed/reframe/reject verdict.',
+          inputSchema: REFRAME_SCHEMA,
+        },
+        handler: async (args) => {
+          const options = args || {};
+          const validation = validateReframeInput(options);
+          if (validation.ok === false) return validation;
+          const taskContext = options.taskContext;
+          const lens = options.lens || 'auto';
+
+          let recommendation;
+          let evidenceState;
+          if (options.recommendationKey !== undefined) {
+            const recommendResult = await service.recommend({ deep: false });
+            const match = (recommendResult.recommendations || []).find(
+              (candidate) => candidate.key === options.recommendationKey
+            );
+            if (!match) return { ok: false, error: 'recommendation not found' };
+            recommendation = match;
+            evidenceState = deriveEvidenceState(match, recommendResult.sourceHealth);
+          } else if (lens === 'auto') {
+            const task = normalizeTaskContext(taskContext);
+            const selection = selectLens({
+              mode: 'auto',
+              subject: {
+                priority: 'medium',
+                category: 'completion-gap',
+                systems: task.systems,
+                phases: task.phases,
+                workTypes: task.workTypes,
+                riskTags: task.riskTags,
+                flags: [],
+              },
+            });
+            if (selection.ok === false && selection.reason === 'no relevant lens') {
+              return { ok: false, error: 'no relevant lens' };
+            }
+          }
+
+          try {
+            return await getLensService().reframe({ recommendation, taskContext, lens, evidenceState });
+          } catch (error) {
+            if (error instanceof Error && error.message === 'unknown lens') {
+              return { ok: false, error: 'unknown lens' };
+            }
+            throw error;
+          }
+        },
+      },
     ],
     resources: () => [
       {
@@ -409,6 +506,9 @@ function createDomain() {
             'brain_architecture',
             'brain_fabrication_audit',
             'brain_lenses',
+            'brain_roadmap',
+            'brain_recommend',
+            'brain_reframe',
           ],
           manifestConfigured: fs.existsSync(manifestPath),
           vaultsConfigured: Boolean(vaults && Object.keys(vaults).length > 0),
@@ -416,7 +516,9 @@ function createDomain() {
           modelsDirsConfigured: modelsDirs.length > 0,
           archDocsConfigured: archDocs.length > 0,
           fabricationDirsConfigured: fabricationDirs.length > 0,
-          kbConfigured: fs.existsSync(kbPath),
+          // No knowledge base ships in this build; reframe runs with its
+          // evidence health gated to non-complete accordingly.
+          kbConfigured: false,
         }),
       },
     ],
@@ -431,4 +533,5 @@ module.exports = {
   tools: domain.tools,
   resources: domain.resources,
   deriveEvidenceState,
+  validateReframeInput,
 };

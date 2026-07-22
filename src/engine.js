@@ -147,6 +147,145 @@ function completeForRecommendation(result) {
 // from a real read-only tool. No fabrication, no model, no vague advice: if
 // no rule's condition holds, the array is empty.
 
+const ROADMAP_NOTE_PATTERN = /roadmap|plan|backlog|handoff|next[-_ ]?steps|unfinished/i;
+const ROADMAP_DEFAULT_LIMIT = 6;
+const ROADMAP_MAX_LIMIT = 12;
+const ROADMAP_OPEN_ITEM_PATTERN = /^\s*- \[ \]/;
+const ROADMAP_SAMPLE_CAP = 5;
+
+const RECOMMEND_PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+
+// Category and evidence sources are intrinsic to each rule. Systems/phases are
+// NOT hardcoded here — they are classified through the configured taxonomy at
+// emit time, so the tags speak your ontology, not a baked-in one.
+const RECOMMENDATION_META = {
+  'close-the-feedback-loop': { category: 'integration-gap', evidenceSources: ['analytics'] },
+  'models-present-but-not-learning': { category: 'integration-gap', evidenceSources: ['models', 'analytics'] },
+  'pipeline-appears-idle': { category: 'verified-failure', evidenceSources: ['analytics'] },
+  'predictions-not-entering-outcome-ledger': { category: 'integration-gap', evidenceSources: ['analytics'] },
+  'data-looks-like-seed-demo-not-production': { category: 'verified-failure', evidenceSources: ['analytics'] },
+  'open-github-items-to-triage': { category: 'launch-blocker', evidenceSources: ['github'] },
+  'local-git-branches-unpushed-unmerged': { category: 'cleanup', evidenceSources: ['git'] },
+  'roadmap-open-items': { category: 'enhancement', evidenceSources: ['roadmap'] },
+};
+
+function finishLineRecommendation(key, recommendation) {
+  // Lazy-required to keep module load order flat; taxonomy has no dependency
+  // back on this module.
+  const { classifyTask } = require('./taxonomy');
+  const classified = classifyTask(`${recommendation.title || ''} ${recommendation.why || ''}`);
+  return {
+    key,
+    ...RECOMMENDATION_META[key],
+    systems: classified.systems,
+    phases: classified.phases,
+    ...recommendation,
+  };
+}
+
+function buildRecommendations({ analytics, backlog, models, roadmap } = {}) {
+  const recommendations = [];
+  const analyticsComplete = completeForRecommendation(analytics);
+  const modelsComplete = completeForRecommendation(models);
+  const githubHealth = backlog && backlog.sources && backlog.sources.github;
+  const gitHealth = backlog && backlog.sources && backlog.sources.git;
+  const githubComplete = completeForRecommendation(githubHealth);
+  const gitComplete = completeForRecommendation(gitHealth);
+  const roadmapNotes = roadmap && roadmap.notes;
+  const roadmapComplete = completeForRecommendation(roadmap);
+
+  if (analyticsComplete && analytics && analytics.status === 'feedback-famine') {
+    const coveragePct = Math.min(Math.max(analytics.feedbackCoverage, 0), 1) * 100;
+    recommendations.push(finishLineRecommendation('close-the-feedback-loop', {
+      priority: 'high',
+      title: 'Close the feedback loop',
+      why: `${analytics.predictionRows} outcome-ledger predictions, ${analytics.feedbackRows} labeled (coverage ${coveragePct.toFixed(1)}%)`,
+      evidence: 'brain_analytics',
+      action: 'Verify feedback intake/bridge and start collecting outcomes.',
+    }));
+  }
+
+  if (modelsComplete && models && models.count > 0
+    && analyticsComplete && analytics && analytics.status === 'feedback-famine') {
+    recommendations.push(finishLineRecommendation('models-present-but-not-learning', {
+      priority: 'high',
+      title: 'Models present but not learning',
+      why: `${models.count} model artifacts on disk but the feedback loop is empty`,
+      evidence: 'brain_ml_models + brain_analytics',
+    }));
+  }
+
+  if (analyticsComplete && analytics && analytics.status === 'no-activity') {
+    recommendations.push(finishLineRecommendation('pipeline-appears-idle', {
+      priority: 'high',
+      title: 'Pipeline appears idle',
+      why: 'No prediction or feedback rows recorded in this database',
+      evidence: 'brain_analytics',
+    }));
+  }
+
+  // Substantial prediction activity but an empty outcome ledger = the signature of
+  // broken intake wiring (predictions logged, but nothing ever creates a ledger
+  // row, so the loop can never close). Framed as an investigation, not an
+  // assertion — and floored so a tiny dev DB never trips it.
+  if (analyticsComplete && analytics && analytics.status === 'no-outcome-ledger'
+    && analytics.predictionActivityRows >= NO_LEDGER_ACTIVITY_FLOOR) {
+    recommendations.push(finishLineRecommendation('predictions-not-entering-outcome-ledger', {
+      priority: 'medium',
+      title: 'Predictions are not entering the outcome ledger',
+      why: `${analytics.predictionActivityRows} predictions logged but 0 entered the outcome ledger (${ANALYTICS_OUTCOME_LEDGER_TABLE})`,
+      evidence: 'brain_analytics',
+      action: 'Verify prediction-intake wiring — the loop cannot close without ledger rows.',
+    }));
+  }
+
+  if (analyticsComplete && analytics && analytics.seedSuspected === true) {
+    recommendations.push(finishLineRecommendation('data-looks-like-seed-demo-not-production', {
+      priority: 'medium',
+      title: 'Data looks like seed/demo, not production',
+      why: analytics.note,
+      evidence: 'brain_analytics',
+    }));
+  }
+
+  const githubCount = backlog && backlog.counts && backlog.counts.bySource ? backlog.counts.bySource.github : undefined;
+  if (githubComplete && githubCount > 0) {
+    recommendations.push(finishLineRecommendation('open-github-items-to-triage', {
+      priority: 'medium',
+      title: `${githubCount} open GitHub items to triage`,
+      why: 'open PRs/issues from gh',
+      evidence: 'brain_backlog',
+      action: 'Review/merge or close.',
+    }));
+  }
+
+  const gitCount = backlog && backlog.counts && backlog.counts.bySource ? backlog.counts.bySource.git : undefined;
+  if (gitComplete && gitCount > 0) {
+    recommendations.push(finishLineRecommendation('local-git-branches-unpushed-unmerged', {
+      priority: 'low',
+      title: `${gitCount} local git branches unpushed/unmerged`,
+      why: `${gitCount} branch(es) flagged by the git backlog scan`,
+      evidence: 'brain_backlog',
+    }));
+  }
+
+  if (roadmapComplete && Array.isArray(roadmapNotes) && roadmapNotes.length > 0) {
+    const topNote = roadmapNotes.reduce(
+      (best, note) => (note.openItems > best.openItems ? note : best),
+      roadmapNotes[0]
+    );
+    recommendations.push(finishLineRecommendation('roadmap-open-items', {
+      priority: 'low',
+      title: `Roadmap: ${topNote.title} has ${topNote.openItems} open items`,
+      why: `${topNote.openItems} unchecked checklist items found in this note`,
+      evidence: 'brain_roadmap',
+    }));
+  }
+
+  recommendations.sort((a, b) => RECOMMEND_PRIORITY_RANK[a.priority] - RECOMMEND_PRIORITY_RANK[b.priority]);
+  return recommendations;
+}
+
 function defaultExecImpl(cmd, args, options) {
   const stdout = execFileSync(cmd, args, { encoding: 'utf8', ...options });
   return { stdout };
@@ -1261,6 +1400,146 @@ function createBrainService({
     return { name: match.name, matchedOn, content };
   }
 
+  function roadmap({ limit = ROADMAP_DEFAULT_LIMIT } = {}) {
+    if (!vaults || Object.keys(vaults).length === 0) {
+      return compatibleFailedResult({}, 'no vaults configured');
+    }
+
+    const boundedLimit = Math.max(1, Math.min(Number(limit) || ROADMAP_DEFAULT_LIMIT, ROADMAP_MAX_LIMIT));
+
+    let vaultService;
+    try {
+      // eslint-disable-next-line global-require
+      const { createObsidianVaultService } = require('./obsidian-vault');
+      vaultService = createObsidianVaultService({ vaults, fsImpl });
+    } catch (error) {
+      return failedEvidence(error.message);
+    }
+
+    // Step 1: readdir-only per vault (fast, no content reads) to get candidate paths.
+    const candidates = [];
+    const failures = [];
+    let listedVaults = 0;
+    for (const vaultAlias of Object.keys(vaults)) {
+      let notes = [];
+      let root;
+      try {
+        notes = vaultService.listNotes(vaultAlias).notes;
+        root = fsImpl.realpathSync(vaults[vaultAlias]);
+        listedVaults += 1;
+      } catch (error) {
+        failures.push(`roadmap listing failed for ${vaultAlias}: ${error.message}`);
+        continue;
+      }
+      for (const relPath of notes) {
+        if (!ROADMAP_NOTE_PATTERN.test(path.basename(relPath))) continue;
+        const absPath = path.join(root, relPath);
+        let mtimeMs = 0;
+        try {
+          mtimeMs = fsImpl.statSync(absPath).mtimeMs;
+        } catch (error) {
+          failures.push(`roadmap stat failed for ${vaultAlias}:${relPath}: ${error.message}`);
+          mtimeMs = 0;
+        }
+        candidates.push({ vaultAlias, relPath, absPath, mtimeMs });
+      }
+    }
+
+    // Step 2: most-recently-modified first.
+    candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+    // Step 3: bounded content reads — at most boundedLimit readFileSync calls,
+    // regardless of how many candidates matched. This bounds the slow iCloud reads.
+    const toRead = candidates.slice(0, boundedLimit);
+    const notes = [];
+    for (const candidate of toRead) {
+      let content;
+      try {
+        content = fsImpl.readFileSync(candidate.absPath, 'utf8');
+      } catch (error) {
+        failures.push(`roadmap read failed for ${candidate.vaultAlias}:${candidate.relPath}: ${error.message}`);
+        continue;
+      }
+      const lines = content.split(/\r?\n/);
+      const h1 = lines.find((line) => line.startsWith('# '));
+      const title = h1 ? h1.replace(/^#\s*/, '').trim() : path.basename(candidate.relPath);
+      const openLines = lines.filter((line) => ROADMAP_OPEN_ITEM_PATTERN.test(line)).map((line) => line.trim());
+      notes.push({
+        vault: candidate.vaultAlias,
+        path: candidate.relPath,
+        title,
+        openItems: openLines.length,
+        sampleOpen: openLines.slice(0, ROADMAP_SAMPLE_CAP),
+      });
+    }
+    if (toRead.length < candidates.length) {
+      failures.push(`roadmap scan read ${notes.length} of ${candidates.length} matched notes (limit ${boundedLimit})`);
+    }
+
+    const evidence = failures.length === 0
+      ? completeEvidence()
+      : (listedVaults === 0
+          ? failedEvidence(failures.join('; '))
+          : partialEvidence(failures.join('; ')));
+    return {
+      source: 'Obsidian vault plan/roadmap notes (filename-matched, most-recent first, bounded read)',
+      matched: candidates.length,
+      read: notes.length,
+      notes,
+      ...evidence,
+    };
+  }
+
+  async function recommend({ deep } = {}) {
+    const analyticsResult = analytics();
+    // Keep it fast: never scan the vault as part of recommend's own backlog gather.
+    const backlogResult = backlog({ includeVault: false });
+    const modelsResult = mlModels();
+    const roadmapResult = deep === true ? roadmap({ limit: 3 }) : null;
+
+    const recommendations = buildRecommendations({
+      analytics: analyticsResult,
+      backlog: backlogResult,
+      models: modelsResult,
+      roadmap: roadmapResult || undefined,
+    });
+
+    const result = {
+      source:
+        "Rule-based deterministic synthesis over the brain's own read-only tools — NOT a predictive/AI model. Verify before acting.",
+      inputs: {
+        analyticsStatus: analyticsResult.status,
+        github: (backlogResult && backlogResult.counts && backlogResult.counts.bySource && backlogResult.counts.bySource.github) ?? null,
+        git: (backlogResult && backlogResult.counts && backlogResult.counts.bySource && backlogResult.counts.bySource.git) ?? null,
+        models: modelsResult.count,
+      },
+      sourceHealth: {
+        analytics: health(analyticsResult, 'analytics unavailable'),
+        models: health(modelsResult, 'model registry unavailable'),
+        github: health(backlogResult.sources && backlogResult.sources.github, 'GitHub unavailable'),
+        git: health(backlogResult.sources && backlogResult.sources.git, 'git unavailable'),
+        roadmap: deep === true ? health(roadmapResult, 'roadmap unavailable') : skippedEvidence('deep=false'),
+      },
+      recommendations,
+    };
+
+    if (recommendations.length === 0) {
+      result.note = 'No actionable signals from current data.';
+    }
+
+    const degradedSources = Object.entries(result.sourceHealth)
+      .filter(([, sourceState]) => sourceState && sourceState.complete !== true && sourceState.skipped !== true)
+      .map(([name]) => name);
+
+    result.reasoning = buildReasoningContract({
+      tool: 'recommend',
+      candidateKeys: recommendations.map((recommendation) => recommendation.key),
+      degradedSources,
+    });
+
+    return result;
+  }
+
   return {
     whereDoesThisDeploy,
     backlog,
@@ -1268,8 +1547,10 @@ function createBrainService({
     mlModels,
     analytics,
     architecture,
+    roadmap,
+    recommend,
     fabricationAudit,
   };
 }
 
-module.exports = { createBrainService, globToRegExp };
+module.exports = { createBrainService, globToRegExp, buildRecommendations };
