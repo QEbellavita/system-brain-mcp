@@ -128,7 +128,7 @@ Every knob is an environment variable, and nothing has a default that assumes yo
 | `SYSTEM_BRAIN_DB` | SQLite path for `db_schema` / `analytics` |
 | `SYSTEM_BRAIN_MODELS_DIRS` | Colon-separated dirs holding model artifacts |
 | `SYSTEM_BRAIN_ARCH_DOCS` | Colon-separated markdown files describing your system |
-| `SYSTEM_BRAIN_OBSIDIAN_VAULTS` | `{"Name":"/path"}` — optional, for `backlog --includeVault` |
+| `SYSTEM_BRAIN_OBSIDIAN_VAULTS` | `{"Name":"/path"}` — optional, for `backlog --includeVault` and `roadmap` |
 
 Two JSON files under `config/` shape the rest. Copy the `.default.json` and edit:
 
